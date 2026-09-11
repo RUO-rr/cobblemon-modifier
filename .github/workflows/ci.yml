@@ -25,6 +25,11 @@ jobs:
       - name: 赋予 gradlew 执行权限
         run: chmod +x ./gradlew
 
+      # 仓库里默认写的是腾讯云镜像（方便国内开发），GitHub Runner 在海外，
+      # 这里换回官方源，避免国内镜像在海外网络下变慢或超时
+      - name: 切换 Gradle 分发地址为官方源
+        run: sed -i 's|mirrors.cloud.tencent.com/gradle|services.gradle.org/distributions|' gradle/wrapper/gradle-wrapper.properties
+
       - name: 构建并运行测试
         run: ./gradlew build --no-daemon
 
