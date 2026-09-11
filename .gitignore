@@ -1,0 +1,42 @@
+# ===== Gradle =====
+.gradle/
+build/
+out/
+
+# ===== 本地运行目录（Fabric 开发环境）=====
+run/
+
+# ===== IDE =====
+.idea/
+*.iml
+*.iws
+*.ipr
+.settings/
+.classpath
+.project
+.vscode/
+bin/
+
+# ===== macOS =====
+*.DS_Store
+
+# ===== 本地构建/测试日志与 jar 备份（个人环境产物，不入库）=====
+*.log
+build-*.log
+*.jar.bak*
+logs/
+.backup/
+
+# ===== Java 崩溃与剖析文件 =====
+hs_err_*.log
+replay_*.log
+*.hprof
+*.jfr
+
+# ===== AI 协作工具的本地配置 =====
+.agents/
+.claude/
+
+# ===== 本地游戏实例数据（覆盖文件、缓存的 JAR 路径等，严禁入库）=====
+overrides/
+config/cobblemonmodifier/

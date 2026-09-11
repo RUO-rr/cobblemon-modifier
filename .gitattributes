@@ -1,0 +1,12 @@
+# 默认统一为 LF，保证在 Windows / macOS / Linux 上 clone 出来一致
+* text=auto eol=lf
+
+# Windows 批处理必须是 CRLF，否则 cmd 解释器可能出错
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# 二进制文件不做换行转换
+*.jar binary
+*.png binary
+*.ico binary
+*.gz binary
