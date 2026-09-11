@@ -1,0 +1,66 @@
+%%{init: {'theme': 'base', 'themeVariables': {'background': '#ffffff', 'primaryColor': '#e8f4fd', 'primaryTextColor': '#000000', 'primaryBorderColor': '#333333', 'lineColor': '#333333', 'secondaryColor': '#f0f0f0', 'tertiaryColor': '#ffffff'}}}%%
+graph TB
+
+    subgraph 启动与装配
+        A["Fabric 主入口 CobblemonModifier.onInitialize()"] --> B["ModifierContainer（组合根）"]
+        B --> C["Repository：JarRepository / OverrideRepository / ConfigRepository"]
+        B --> D["Service：ScanService / ModifyService / MoveCatalog / SpeciesOverrideIndex / MegaLimitService"]
+        B --> E["ServiceLoader&lt;JsonModifier&gt; 自动发现 5 个插件"]
+        B --> F["MainFrame（纯 POJO 视图状态）+ MainController"]
+        A --> G["客户端入口注册按键 K → 打开 ModifierScreen"]
+    end
+
+    subgraph 加载宝可梦数据
+        H["点击「应用目录」"] --> I["onFolderSelected：清空缓存、记住目录"]
+        I --> J["点击「加载宝可梦数据」"]
+        J --> K["扫描闸门：同一时间只允许一个扫描"]
+        K --> L["收集候选：遍历数据源"]
+        L --> L1["mods/*.jar（按魔改名过滤）"]
+        L --> L2["global_packs/jostar_overrides"]
+        L --> L3["global_packs/required_data"]
+        L --> L4["resourcepacks（同名 zip 跳过）"]
+        L1 --> M["每个压缩包只打开一次，批量读取候选 JSON"]
+        L2 --> M
+        L3 --> M
+        L4 --> M
+        M --> N{"是否宝可梦数据？"}
+        N -->|"有 baseStats"| O["物种本体"]
+        N -->|"有 target + moves/abilities/baseStats"| P["可编辑的 species_additions 覆盖文件"]
+        N -->|"其它（图鉴条目/骑乘/配方…）"| Q["跳过"]
+        O --> R["按 JSON 路径去重（高优先级来源先到先得）"]
+        P --> R
+        R --> S["写入视图列表 + 缓存到本地配置"]
+    end
+
+    subgraph 编辑与保存
+        T["在左侧列表选中一个条目"] --> U["Controller 读取 JSON → 插件 parseJson → 生成编辑器字段"]
+        U --> V["在右侧改字段（技能插件额外提供 4 个新增空槽）"]
+        V --> W["点击「保存修改」"]
+        W --> X["插件 modifyJson 重建 JSON"]
+        X --> Y{"输入校验通过？"}
+        Y -->|"技能格式/招式 id 非法"| Y1["拒绝保存并提示具体是哪个词"]
+        Y -->|"通过"| Z["写入 config/cobblemonmodifier/overrides/&lt;原路径&gt;"]
+        Z --> AA["差分：找出值发生过变化的顶层字段"]
+        AA --> AB["SpeciesOverrideIndex 找到该物种的其它来源（本体 + 所有 species_additions）"]
+        AB --> AC["把变化字段同步写进每一个定义该字段的来源文件"]
+        AC --> AC1["特例：forms 按形态名逐个替换，保留别的模组加的形态（如 ZA 超进化）"]
+        AC1 --> AD["镜像同步为 &lt;存档&gt;/datapacks/cobblemonmodifier/"]
+        AD --> AE["提示：修改成功（已同步 N 个其它来源文件），重进世界后生效"]
+    end
+
+    subgraph 还原原版
+        AF["点击「还原原版」"] --> AG["解析物种标识符（覆盖文件取 target，本体按路径推）"]
+        AG --> AH["删除本体 + 所有相关来源的覆盖文件（避免半还原）"]
+        AH --> AD
+    end
+
+    subgraph 游戏侧为什么需要重进世界
+        AI["退出并重新进入世界"] --> AJ["服务端重读数据包：Loaded N Pokémon species"]
+        AJ --> AK["Cobblemon 物种注册表更新"]
+        AK --> AL["同时把物种数据推送给内置的 Showdown 战斗引擎"]
+        AL --> AM["图鉴与对战同时使用新数据"]
+        AN["为什么不能热重载：Cobblemon 日志明确说明 species are not safe to reload"] -.-> AJ
+    end
+
+    S --> T
+    AE --> AI
