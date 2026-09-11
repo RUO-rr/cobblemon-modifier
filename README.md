@@ -1,6 +1,7 @@
 # cobblemon-modifier · 游戏内的 Cobblemon 数据修改器
 
 [![CI](https://github.com/RUO-rr/cobblemon-modifier/actions/workflows/ci.yml/badge.svg)](https://github.com/RUO-rr/cobblemon-modifier/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/RUO-rr/cobblemon-modifier?label=release&color=brightgreen)](https://github.com/RUO-rr/cobblemon-modifier/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Minecraft](https://img.shields.io/badge/Minecraft-1.21.1-62b47a)
 ![Fabric](https://img.shields.io/badge/Fabric-Loader%200.18.4%2B-dbb69c)
@@ -93,7 +94,8 @@ docs/user-feedback.md             # 反馈 → 改动 的对应记录
 
 ## 安装
 
-1. 把 `cobblemonmodifier-3.0.0.jar` 放进整合包的 `mods` 目录
+1. 从 [**Releases**](https://github.com/RUO-rr/cobblemon-modifier/releases/latest) 下载最新的
+   `cobblemonmodifier-<版本>.jar`，放进整合包的 `mods` 目录
 2. 确认已安装 **Cobblemon** 与 **Fabric API**（多人服务器上无效，见下）
 
 ## 使用
@@ -140,7 +142,8 @@ CI 在 Ubuntu + Temurin JDK 21 上跑同一套 `./gradlew build`（见 [.github/
 
 ## 版本
 
-见 [CHANGELOG.md](CHANGELOG.md)。当前版本 **3.0.0**。
+当前版本 **3.0.0**，下载见 [Releases](https://github.com/RUO-rr/cobblemon-modifier/releases/latest)；
+历史改动见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 许可
 
