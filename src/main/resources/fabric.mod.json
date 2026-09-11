@@ -1,0 +1,31 @@
+{
+	"schemaVersion": 1,
+	"id": "cobblemonmodifier",
+	"version": "${version}",
+	"name": "Cobblemon Modifier",
+	"description": "在游戏内安全地修改 Cobblemon 宝可梦数据：种族值、特性、技能。改动写入独立覆盖文件并同步为世界数据包，不改写原模组 JAR；会一并读取整合包数据包（resourcepacks / global_packs）里的魔改宝可梦。",
+	"authors": [
+		"Cobblemon Modifier"
+	],
+	"license": "MIT",
+	"icon": "assets/cobblemonmodifier/icon.png",
+	"environment": "client",
+	"entrypoints": {
+		"main": [
+			"com.cobblemon.modifier.CobblemonModifier"
+		],
+		"client": [
+			"com.cobblemon.modifier.client.CobblemonModifierClient"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.18.4",
+		"minecraft": "~1.21.1",
+		"java": ">=21",
+		"fabric-api": "*",
+		"cobblemon": "*"
+	},
+	"recommends": {
+		"mega_showdown": "*"
+	}
+}

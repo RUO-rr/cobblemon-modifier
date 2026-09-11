@@ -1,0 +1,6 @@
+com.cobblemon.modifier.plugin.BaseStatsModifier
+com.cobblemon.modifier.plugin.AbilityModifier
+com.cobblemon.modifier.plugin.MoveModifier
+com.cobblemon.modifier.plugin.SpawnRateModifier
+com.cobblemon.modifier.plugin.CustomPokemonScanner
+com.cobblemon.modifier.plugin.FieldSearchModifier
