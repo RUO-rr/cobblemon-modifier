@@ -1,5 +1,11 @@
 # cobblemon-modifier · 游戏内的 Cobblemon 数据修改器
 
+[![CI](https://github.com/RUO-rr/cobblemon-modifier/actions/workflows/ci.yml/badge.svg)](https://github.com/RUO-rr/cobblemon-modifier/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![Minecraft](https://img.shields.io/badge/Minecraft-1.21.1-62b47a)
+![Fabric](https://img.shields.io/badge/Fabric-Loader%200.18.4%2B-dbb69c)
+![Java](https://img.shields.io/badge/Java-21-orange)
+
 一个 Fabric 客户端模组：**在游戏里直接修改 Cobblemon 宝可梦数据（种族值 / 特性 / 技能）**。
 
 所有改动都写入独立覆盖文件并同步为世界数据包，**不改写任何原模组 JAR**，随时可以一键还原。
@@ -118,11 +124,16 @@ docs/user-feedback.md             # 反馈 → 改动 的对应记录
 ## 开发与构建
 
 ```bash
+git clone git@github.com:RUO-rr/cobblemon-modifier.git
+cd cobblemon-modifier
+
 ./gradlew build      # 编译 + 254 个单元测试
 ./gradlew test       # 只跑测试
 ```
 
 产物：`build/libs/cobblemonmodifier-<版本>.jar`
+
+CI 在 Ubuntu + Temurin JDK 21 上跑同一套 `./gradlew build`（见 [.github/workflows/ci.yml](.github/workflows/ci.yml)）。
 
 > 开发环境用 JDK 25 构建、目标字节码 21；`gradle-wrapper.properties` 里用的是腾讯云镜像，
 > 若在国外网络可换回 `https://services.gradle.org/distributions/`。
