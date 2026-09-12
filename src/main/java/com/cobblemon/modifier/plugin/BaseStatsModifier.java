@@ -68,8 +68,14 @@ public class BaseStatsModifier implements JsonModifier {
             ? FormInfo.extractFromJson(jsonObject.getAsJsonArray("forms"))
             : List.of();
 
+        // 覆盖文件（魔改 Mega 石的 species_additions）没有顶层 baseStats：
+        // 种族值全写在形态里。这时**不能**再生成"基础形态"的 6 个字段——
+        // 它们只会显示成一排 0，把真正的形态数值挤到后面，看起来像"没读到数据"。
+        boolean hasBaseStats = jsonObject.has("baseStats")
+            && jsonObject.get("baseStats").isJsonObject();
+
         // 2. 构建字段定义（纯函数，基于 forms 列表）
-        List<StatField> fields = buildFields(forms);
+        List<StatField> fields = buildFields(forms, hasBaseStats);
 
         // 3. 读取所有字段值
         Map<String, Object> values = readAllValues(jsonObject, forms);
@@ -164,14 +170,16 @@ public class BaseStatsModifier implements JsonModifier {
     /**
      * 构建字段定义列表 —— 纯函数，不修改任何状态。
      */
-    private static List<StatField> buildFields(List<FormInfo> forms) {
+    private static List<StatField> buildFields(List<FormInfo> forms, boolean includeBaseStats) {
         List<StatField> fields = new ArrayList<>();
 
-        // 基础形态的 6 项种族值
-        for (String statKey : PokemonStats.FIELD_NAMES) {
-            fields.add(StatField.ofInt(
-                statKey + BASE_SUFFIX,
-                "基础形态 - " + statLabel(statKey)));
+        // 基础形态的 6 项种族值（只有本体文件才有）
+        if (includeBaseStats) {
+            for (String statKey : PokemonStats.FIELD_NAMES) {
+                fields.add(StatField.ofInt(
+                    statKey + BASE_SUFFIX,
+                    "基础形态 - " + statLabel(statKey)));
+            }
         }
 
         // 各形态的 6 项种族值

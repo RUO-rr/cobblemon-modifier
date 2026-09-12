@@ -26,6 +26,42 @@ public class BaseStatsModifierTest {
         assertEquals("种族值修改", plugin.getPluginName());
     }
 
+    /**
+     * 魔改 Mega 石的覆盖文件（mushiromega 的喷火龙 Mega-Z）没有顶层 baseStats，
+     * 种族值全写在形态里。
+     *
+     * <p>旧实现照样生成 6 个"基础形态"字段（值全是 0），真正的 Mega-Z 数值被挤到后面，
+     * 玩家看到的就是"一排 0，像是没读到数据"。
+     */
+    @Test
+    public void parseJson_shouldSkipBaseFieldsWhenOverlayHasNoBaseStats() {
+        JsonObject overlay = new JsonObject();
+        overlay.addProperty("target", "cobblemon:charizard");
+        JsonArray forms = new JsonArray();
+        JsonObject megaZ = new JsonObject();
+        megaZ.addProperty("name", "Mega-Z");
+        JsonObject stats = new JsonObject();
+        stats.addProperty("hp", 78);
+        stats.addProperty("attack", 144);
+        stats.addProperty("defence", 97);
+        stats.addProperty("special_attack", 99);
+        stats.addProperty("special_defence", 65);
+        stats.addProperty("speed", 151);
+        megaZ.add("baseStats", stats);
+        forms.add(megaZ);
+        overlay.add("forms", forms);
+
+        Map<String, Object> values = plugin.parseJson(overlay);
+
+        assertTrue("覆盖文件不该出现基础形态字段",
+            plugin.getFieldNames().stream().noneMatch(key -> key.endsWith("_base")));
+        assertEquals(6, plugin.getFieldNames().size());
+        assertTrue(plugin.getFieldLabel(plugin.getFieldNames().get(0)).startsWith("Mega-Z - "));
+        assertEquals(78, values.get("hp_mega_0"));
+        assertEquals(144, values.get("attack_mega_0"));
+        assertEquals(151, values.get("speed_mega_0"));
+    }
+
     @Test
     public void getTargetJsonPaths_shouldReturnSpeciesPath() {
         List<String> paths = plugin.getTargetJsonPaths();
