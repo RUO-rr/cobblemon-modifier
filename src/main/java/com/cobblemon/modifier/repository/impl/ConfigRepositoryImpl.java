@@ -24,6 +24,7 @@ public class ConfigRepositoryImpl implements ConfigRepository {
     private static final String KEY_FOLDER_PATH = "last_selected_jar_path";
     private static final String KEY_LEGACY_JSONS = "loaded_json_paths";
     private static final String PLUGIN_CACHE_PREFIX = "plugin_cache_";
+    private static final String KEY_SCAN_RULE_VERSION = "scan_rule_version";
     private static final String LIST_SEPARATOR = "|||";
 
     private final Properties properties;
@@ -104,6 +105,25 @@ public class ConfigRepositoryImpl implements ConfigRepository {
             }
         }
         keysToRemove.forEach(properties::remove);
+        save();
+    }
+
+    @Override
+    public int getScanRuleVersion() {
+        String raw = properties.getProperty(KEY_SCAN_RULE_VERSION);
+        if (raw == null) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(raw.trim());
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    @Override
+    public void saveScanRuleVersion(int version) {
+        properties.setProperty(KEY_SCAN_RULE_VERSION, String.valueOf(version));
         save();
     }
 

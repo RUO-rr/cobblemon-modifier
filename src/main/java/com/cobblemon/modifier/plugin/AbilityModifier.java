@@ -129,7 +129,26 @@ public class AbilityModifier implements JsonModifier {
 
     @Override
     public boolean hasValidStatsFields(JsonObject jsonObject) {
-        return jsonObject.has("abilities");
+        if (jsonObject == null) {
+            return false;
+        }
+        if (jsonObject.has("abilities")) {
+            return true;
+        }
+        // 只带 forms 的覆盖文件（魔改 Mega 石）：特性写在形态里，同样可编辑
+        return hasFormAbilities(jsonObject);
+    }
+
+    private static boolean hasFormAbilities(JsonObject jsonObject) {
+        if (!jsonObject.has("forms") || !jsonObject.get("forms").isJsonArray()) {
+            return false;
+        }
+        for (JsonElement element : jsonObject.getAsJsonArray("forms")) {
+            if (element.isJsonObject() && element.getAsJsonObject().has("abilities")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // ================================================================

@@ -171,7 +171,21 @@ public class TypeModifier implements JsonModifier {
 
     @Override
     public boolean hasValidStatsFields(JsonObject jsonObject) {
-        return jsonObject != null && jsonObject.has("primaryType");
+        if (jsonObject == null) {
+            return false;
+        }
+        if (jsonObject.has("primaryType")) {
+            return true;
+        }
+        // 只带 forms 的覆盖文件（魔改 Mega 石）：属性写在形态里，同样可编辑
+        if (jsonObject.has("forms") && jsonObject.get("forms").isJsonArray()) {
+            for (JsonElement element : jsonObject.getAsJsonArray("forms")) {
+                if (element.isJsonObject() && element.getAsJsonObject().has("primaryType")) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     // ================================================================

@@ -1,6 +1,7 @@
 package com.cobblemon.modifier.service.impl;
 
 import com.cobblemon.modifier.repository.impl.JarRepositoryImpl;
+import com.cobblemon.modifier.core.util.PokemonJsonFilter;
 import com.cobblemon.modifier.service.ScanService;
 import org.junit.Rule;
 import org.junit.Test;
@@ -45,13 +46,7 @@ public class ScanServiceDataPackTest {
     }
 
     private ScanService.ScanResult scan() throws Exception {
-        return scanService.scanAndValidate(modsDir, List.of("data/cobblemon/species"),
-            name -> true, json -> true, (current, total, status) -> { });
-    }
-
-    /** 「加载宝可梦数据」用的全量扫描：目标是 data/，会同时收 species 与 species_additions。 */
-    private ScanService.ScanResult scanAll() throws Exception {
-        return scanService.scanAndValidate(modsDir, List.of("data/"),
+        return scanService.scanAndValidate(modsDir,
             name -> true, json -> true, (current, total, status) -> { });
     }
 
@@ -134,7 +129,7 @@ public class ScanServiceDataPackTest {
         writeZip(new File(requiredData, "seer.zip"), RUSIWANG, RUSIWANG_JSON);
 
         ScanService.ScanResult result = scanService.scanAndValidate(modsDir,
-            List.of("data/cobblemon/species"), name -> false, json -> true, (c, t, s) -> { });
+            name -> false, json -> true, (c, t, s) -> { });
 
         // mods 里的 jar 被过滤掉，但数据包不受 jar 名称过滤器影响
         assertEquals(1, result.validPaths().size());
@@ -188,11 +183,82 @@ public class ScanServiceDataPackTest {
             "data/move_calibration/species_additions/garchomp_move.json",
             "{\"target\":\"cobblemon:garchomp\",\"moves\":[\"1:tackle\"]}");
 
-        ScanService.ScanResult result = scanAll();
+        ScanService.ScanResult result = scan();
 
         assertEquals(1, result.validPaths().size());
         assertEquals("data/move_calibration/species_additions/garchomp_move.json",
             result.validPaths().get(0).jsonPath());
+    }
+
+    /**
+     * 回归：魔改模组把物种数据放在**自己的命名空间**里。
+     *
+     * <p>mushiromega 的喷火龙 Mega-Z / 烈咬陆鲨 Mega-M / 莱希拉姆 Mega 全部在
+     * {@code data/newsmega/species_additions/**}，以前只收 {@code data/cobblemon/...}
+     * 会导致这些宝可梦在列表里根本不出现，自然改不了。
+     */
+    @Test
+    public void scan_shouldIncludeSpeciesAdditionsFromAnyNamespace() throws Exception {
+        prepare();
+        writeJar(new File(modsDir, "mushiromega-fabric-1.4.8-SNAPSHOT.jar"),
+            "data/newsmega/species_additions/generation1/charizard.json",
+            "{\"target\":\"cobblemon:charizard\",\"moves\":[\"1:tackle\"],"
+                + "\"forms\":[{\"name\":\"Mega-Z\",\"baseStats\":{\"hp\":78}}]}");
+
+        ScanService.ScanResult result = scan();
+
+        assertEquals(1, result.validPaths().size());
+        assertEquals("data/newsmega/species_additions/generation1/charizard.json",
+            result.validPaths().get(0).jsonPath());
+    }
+
+    /** 只带 forms 的覆盖文件（没有顶层 moves/abilities/baseStats）也要能收进来。 */
+    @Test
+    public void scan_shouldIncludeFormOnlySpeciesAdditions() throws Exception {
+        prepare();
+        writeJar(new File(modsDir, "mushiromega-fabric-1.4.8-SNAPSHOT.jar"),
+            "data/newsmega/species_additions/generation5/reshiram.json",
+            "{\"target\":\"cobblemon:reshiram\",\"forms\":"
+                + "[{\"name\":\"Mega\",\"baseStats\":{\"hp\":100},\"primaryType\":\"dragon\"}]}");
+
+        ScanService.ScanResult result = scan();
+
+        assertEquals(1, result.validPaths().size());
+        assertEquals("data/newsmega/species_additions/generation5/reshiram.json",
+            result.validPaths().get(0).jsonPath());
+    }
+
+    /** 名字里带 species 但不是物种数据（研究手册奖励、图鉴条目）不能混进来。 */
+    @Test
+    public void scan_shouldIgnoreSpeciesLookingPathsElsewhere() throws Exception {
+        prepare();
+        File zip = new File(modsDir, "research.jar");
+        writeJar(zip, "data/cobblemonresearchtasks/rewards/species/charizard.json",
+            "{\"name\":\"charizard\"}");
+
+        ScanService.ScanResult result = scan();
+
+        assertEquals(0, result.validPaths().size());
+    }
+
+    /**
+     * 用生产环境真正的校验器（{@link PokemonJsonFilter}）跑一遍：
+     * 只有 forms 的魔改覆盖文件必须通过校验，否则列表里还是看不到它。
+     */
+    @Test
+    public void scan_shouldKeepFormOnlyOverlayWithProductionValidator() throws Exception {
+        prepare();
+        writeJar(new File(modsDir, "mushiromega-fabric-1.4.8-SNAPSHOT.jar"),
+            "data/newsmega/species_additions/generation5/reshiram.json",
+            "{\"target\":\"cobblemon:reshiram\",\"forms\":"
+                + "[{\"name\":\"Mega\",\"baseStats\":{\"hp\":100},\"primaryType\":\"dragon\","
+                + "\"abilities\":[\"overload\"]}]}");
+
+        ScanService.ScanResult result = scanService.scanAndValidate(modsDir, name -> true,
+            json -> PokemonJsonFilter.isEditableAddition(json) || PokemonJsonFilter.isSpeciesData(json),
+            (current, total, status) -> { });
+
+        assertEquals(1, result.validPaths().size());
     }
 
     // ---- helpers ----

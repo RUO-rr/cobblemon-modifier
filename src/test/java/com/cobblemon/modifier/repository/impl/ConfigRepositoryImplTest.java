@@ -124,4 +124,24 @@ public class ConfigRepositoryImplTest {
         // the contract is that this never returns null.
         assertNotNull(repo.getLegacyJsonPaths());
     }
+
+    // ---- 扫描规则版本（用于让旧缓存失效）----
+
+    @Test
+    public void scanRuleVersion_shouldRoundTrip() {
+        repo.saveScanRuleVersion(2);
+        assertEquals(2, repo.getScanRuleVersion());
+    }
+
+    @Test
+    public void clearAllPluginCaches_shouldKeepScanRuleVersion() {
+        repo.saveScanRuleVersion(2);
+        repo.savePluginCache("p1", List.of("a"));
+
+        repo.clearAllPluginCaches();
+
+        assertTrue(repo.getPluginCache("p1").isEmpty());
+        assertEquals("清缓存不能让版本号一起丢，否则每次启动都会白清一次",
+            2, repo.getScanRuleVersion());
+    }
 }

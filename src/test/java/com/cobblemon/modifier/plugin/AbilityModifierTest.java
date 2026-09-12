@@ -226,6 +226,48 @@ public class AbilityModifierTest {
         assertFalse(plugin.hasValidStatsFields(json));
     }
 
+    /**
+     * 魔改 Mega 石的覆盖文件：顶层只有 target + forms，特性写在形态里
+     * （mushiromega 的莱希拉姆 Mega 就是 {@code "abilities": ["overload", "h:overload"]}）。
+     */
+    @Test
+    public void hasValidStatsFields_shouldAcceptFormAbilities() {
+        JsonObject json = new JsonObject();
+        json.addProperty("target", "cobblemon:reshiram");
+        JsonObject form = new JsonObject();
+        form.addProperty("name", "Mega");
+        JsonArray abilities = new JsonArray();
+        abilities.add("overload");
+        abilities.add("h:overload");
+        form.add("abilities", abilities);
+        JsonArray forms = new JsonArray();
+        forms.add(form);
+        json.add("forms", forms);
+
+        assertTrue(plugin.hasValidStatsFields(json));
+    }
+
+    @Test
+    public void parseJson_shouldReadFormAbilitiesFromOverlay() {
+        JsonObject json = new JsonObject();
+        json.addProperty("target", "cobblemon:reshiram");
+        JsonObject form = new JsonObject();
+        form.addProperty("name", "Mega");
+        JsonArray abilities = new JsonArray();
+        abilities.add("overload");
+        abilities.add("h:overload");
+        form.add("abilities", abilities);
+        JsonArray forms = new JsonArray();
+        forms.add(form);
+        json.add("forms", forms);
+
+        Map<String, Object> values = plugin.parseJson(json);
+
+        // 形态没有自己的后缀规则匹配时按索引命名（Mega → _mega_0）
+        assertEquals("overload", values.get("ability_slot_1_mega_0"));
+        assertEquals("overload", values.get("ability_hidden_mega_0"));
+    }
+
     // ---- helpers ----
 
     private static JsonObject speciesWithAbilities(String slot1, String slot2) {

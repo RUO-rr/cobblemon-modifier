@@ -48,6 +48,14 @@ public class MainController {
 
     private static final Logger log = LoggerFactory.getLogger(MainController.class);
 
+    /**
+     * 扫描规则版本：改动"哪些文件算宝可梦数据"时 +1。
+     *
+     * <p>v2：扫描不再限定 {@code data/cobblemon/...}，任何命名空间的
+     * {@code species} / {@code species_additions} 都收（魔改 Mega 石在 {@code data/newsmega/...}）。
+     */
+    private static final int SCAN_RULE_VERSION = 2;
+
     // ---- 依赖（构造函数注入） ----
     private final MainFrame view;
     private final PluginPanel pluginPanel;
@@ -117,6 +125,16 @@ public class MainController {
 
     public void initialize() {
         view.populatePluginCombo(new ArrayList<>(plugins.keySet()));
+
+        // 扫描规则变了（例如放开命名空间）就丢掉旧缓存，
+        // 否则界面会继续用升级前的列表，看起来像"新数据没加载进来"
+        int cachedRuleVersion = configRepo.getScanRuleVersion();
+        if (cachedRuleVersion != SCAN_RULE_VERSION) {
+            log.info("扫描规则版本变化（{} → {}），清除旧的插件缓存",
+                cachedRuleVersion, SCAN_RULE_VERSION);
+            configRepo.clearAllPluginCaches();
+            configRepo.saveScanRuleVersion(SCAN_RULE_VERSION);
+        }
 
         String lastFolder = configRepo.getLastFolderPath();
         if (lastFolder != null) {
@@ -213,8 +231,7 @@ public class MainController {
         }
 
         view.setPluginComboEnabled(false);
-        List<String> targetPaths = plugin.getTargetJsonPaths();
-        executor.submit(() -> doScanAndValidate(pluginName, targetPaths, jarName -> true));
+        executor.submit(() -> doScanAndValidate(pluginName, jarName -> true));
     }
 
     // ================================================================
@@ -240,7 +257,6 @@ public class MainController {
             try {
                 ScanService.ScanResult result = scanService.scanAndValidate(
                     selectedFolder,
-                    List.of("data/"),
                     CustomPokemonScanner::isTargetJar,
                     this::isValidPokemonJson,
                     (cur, total, status) -> view.updateProgress(cur, total, status)
@@ -255,7 +271,7 @@ public class MainController {
                 String currentPlugin = view.getSelectedPluginName();
                 JsonModifier currentMod = plugins.get(currentPlugin);
                 if (currentMod instanceof BaseStatsModifier || currentMod instanceof AbilityModifier
-                    || currentMod instanceof SpawnRateModifier) {
+                    || currentMod instanceof SpawnRateModifier || currentMod instanceof TypeModifier) {
                     this.currentPaths = result.validPaths();
                     cachePluginPaths(currentPlugin, result.validPaths());
                     refreshViewList();
@@ -745,7 +761,7 @@ public class MainController {
     // 内部辅助方法
     // ================================================================
 
-    private void doScanAndValidate(String pluginName, List<String> targetPaths,
+    private void doScanAndValidate(String pluginName,
                                     java.util.function.Predicate<String> jarFilter) {
         // 与"加载宝可梦数据"共用同一个扫描闸门，避免两个扫描同时抢 2 个线程
         if (!scanning.compareAndSet(false, true)) {
@@ -759,7 +775,6 @@ public class MainController {
             JsonModifier plugin = plugins.get(pluginName);
             ScanService.ScanResult result = scanService.scanAndValidate(
                 selectedFolder,
-                targetPaths,
                 jarFilter,
                 plugin != null ? plugin::hasValidStatsFields : json -> true,
                 (cur, total, status) -> view.updateProgress(cur, total, status)

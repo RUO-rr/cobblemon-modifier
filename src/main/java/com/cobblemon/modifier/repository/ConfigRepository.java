@@ -23,6 +23,18 @@ public interface ConfigRepository {
     /** 清除所有插件缓存 */
     void clearAllPluginCaches();
 
+    /**
+     * 扫描规则版本号。
+     *
+     * <p>改动"哪些文件算宝可梦数据"（例如放开命名空间限制）时 +1，
+     * 启动时发现版本不一致就清掉旧的插件缓存——否则用户升级后
+     * 界面仍然用旧列表，会以为"新数据还是没加载进来"。
+     */
+    int getScanRuleVersion();
+
+    /** 保存当前扫描规则版本。 */
+    void saveScanRuleVersion(int version);
+
     /** 获取旧的通用 JSON 路径缓存（向后兼容） */
     List<String> getLegacyJsonPaths();
 

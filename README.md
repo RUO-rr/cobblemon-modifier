@@ -15,7 +15,9 @@
 ## 核心亮点
 
 - **数据源补全**：不只读 `mods/*.jar`，还会读取整合包的 `global_packs` / `resourcepacks` 数据包，
-  因此那些"只存在于数据包里"的魔改宝可梦（赛尔号、真·方可梦、Extra Paradox…）同样可以编辑
+  而且**命名空间不设限**——任何 `data/<命名空间>/species` 与 `species_additions` 都收，
+  所以"只存在于数据包里"的魔改宝可梦（赛尔号、真·方可梦、Extra Paradox…）同样可以编辑；
+  魔改 Mega 石（mushiromega 的 Mega-Z / Mega-M、莱希拉姆 Mega 等 150 个形态）也在列表里
 - **覆盖写入，不碰原 JAR**：改动落到 `config/cobblemonmodifier/overrides/`，再同步为世界数据包，
   删除文件即还原，天然可回滚
 - **扇出同步（本项目最重要的一次修复）**：整合包常用 `data/<ns>/species_additions/` **整体替换**物种字段，

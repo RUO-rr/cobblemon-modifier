@@ -310,6 +310,40 @@ forms[]: 366 个形态全部自带属性（喷火龙 Mega-X 是 fire/dragon）
 复用清单：插件的注册（`META-INF/services`）、覆盖写入、扇出同步、一键还原、
 表单渲染（`FormInfo` + `StatField`）**全部沿用**种族值/特性插件那一套，新增代码只有一个插件类。
 
+### C9（P6）"我改了但列表里没有"：命名空间无关的物种数据扫描
+
+**反馈**："喷火龙进化石Z / 烈咬陆鲨进化石M / 莱希拉姆进化石 这些宝可梦改不了。"
+
+**第一步是分清两种"找不到"**：是数据不在硬盘上，还是我们的列表没收录？
+把整合包 476 个压缩包全扫一遍后，答案很明确——数据在，只是路径不在我们的扫描范围内：
+
+```
+mods/mushiromega-fabric-1.4.8-SNAPSHOT.jar
+   └── data/newsmega/species_additions/generation1/charizard.json      forms: [Mega-Z]
+   └── data/newsmega/species_additions/generation4/garchomp_change.json forms: [Mega-M]
+   └── data/newsmega/species_additions/generation5/reshiram.json        forms: [Mega]
+```
+
+**三个独立的坑**，任何一个都会让这些宝可梦改不了：
+
+1. **命名空间被写死**。扫描沿用了各插件的 `getTargetJsonPaths()`（`data/cobblemon/species`），
+   于是 `data/newsmega/...` 连候选都算不上。
+   改为按**路径规则**收集：`data/<任意命名空间>/(species|species_additions)/**`。
+   用正则的目录位置（命名空间后紧接 `species`）同时排掉了
+   `data/cobblemonresearchtasks/rewards/species/...` 这种"名字里有 species 但不是物种数据"的路径——
+   顺带把候选数从 11058 降到 3517，加载更快。
+2. **"只带 forms"的覆盖文件被过滤掉**。`PokemonJsonFilter` 原来只认顶层
+   `moves` / `abilities` / `baseStats`，而魔改 Mega 石的种族值、属性、特性**全写在形态里**
+   （莱希拉姆那份顶层只有 `target` + `forms`）。现在形态里带这些字段也算可编辑。
+   对应地，三个插件的 `hasValidStatsFields` 也一起放开，否则选中文件后会显示"没有字段"。
+3. **旧缓存让修复失效**。插件列表会缓存在 `~/.cobblemon-modifier/config.properties` 里，
+   升级后仍然用升级前的列表，用户看到的现象和没修一样。
+   于是引入 `SCAN_RULE_VERSION`：规则变化时启动即清缓存（版本号留在配置里，不会每次启动都清）。
+
+**验证方式**：写了一个"用旧规则和新规则各跑一遍、比较有效集合"的对比程序，
+结果是 **+150 / -0**——新增的全是 `data/newsmega/**` 的魔改形态，没有任何原来能改的条目丢失。
+这条"先证明没弄丢东西"的检查，比单看新增数量更有意义。
+
 ---
 
 ## 二、核心技术决策与技术亮点

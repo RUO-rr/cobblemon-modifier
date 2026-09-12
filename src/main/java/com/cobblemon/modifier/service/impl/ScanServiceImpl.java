@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
 
 /**
  * JAR 扫描与 JSON 验证服务实现。
@@ -28,18 +29,35 @@ public class ScanServiceImpl implements ScanService {
 
     private final JarRepository jarRepo;
 
+    /**
+     * 宝可梦数据的路径规则：{@code data/<命名空间>/species/**} 与
+     * {@code data/<命名空间>/species_additions/**}。
+     *
+     * <p>**命名空间必须放开**：整合包与魔改模组会把物种数据放进自己的命名空间，
+     * 例如 mushiromega 的 Mega-Z / Mega-M 形态就在
+     * {@code data/newsmega/species_additions/generation1/charizard.json}，
+     * ZA 的超进化在 {@code data/cobblemon/species_additions/...}。
+     * 以前只收 {@code data/cobblemon/...}，于是"喷火龙进化石Z / 烈咬陆鲨M"这类
+     * 魔改形态根本不出现在列表里，自然也就改不了。
+     *
+     * <p>同时用目录位置（命名空间后紧接 species）排除了
+     * {@code data/<命名空间>/rewards/species/...}、{@code data/cobblemon/dex_entries/...}
+     * 这类"名字里有 species 但不是物种数据"的条目。
+     */
+    private static final Pattern POKEMON_DATA_PATH =
+        Pattern.compile("^data/[^/]+/(?:species|species_additions)/.+");
+
     public ScanServiceImpl(JarRepository jarRepo) {
         this.jarRepo = jarRepo;
     }
 
     @Override
     public ScanResult scanAndValidate(File folder,
-                                      List<String> targetPaths,
                                       Predicate<String> jarFilter,
                                       Predicate<JsonObject> validator,
                                       ProgressCallback onProgress) throws Exception {
         // 第一步：收集候选，并按"所属压缩包"分组
-        Map<File, List<String>> candidates = gatherCandidates(folder, targetPaths, jarFilter, onProgress);
+        Map<File, List<String>> candidates = gatherCandidates(folder, jarFilter, onProgress);
         int totalCount = candidates.values().stream().mapToInt(List::size).sum();
 
         // 第二步：逐个压缩包批量读取 + 校验
@@ -83,7 +101,7 @@ public class ScanServiceImpl implements ScanService {
      * 同一份数据在 resourcepacks 与 global_packs 里各存了一份，去重后列表里只留
      * 优先级最高的那条，避免列表里出现两条一模一样的宝可梦。
      */
-    private Map<File, List<String>> gatherCandidates(File folder, List<String> targetPaths,
+    private Map<File, List<String>> gatherCandidates(File folder,
                                                      Predicate<String> jarFilter,
                                                      ProgressCallback onProgress) throws Exception {
         Map<File, List<String>> byArchive = new LinkedHashMap<>();
@@ -92,7 +110,7 @@ public class ScanServiceImpl implements ScanService {
         }
 
         long startedAt = System.currentTimeMillis();
-        log.info("开始收集候选文件：目录 {}，目标路径 {}", folder, targetPaths);
+        log.info("开始收集候选文件：目录 {}", folder);
 
         // 已经收录过的 JSON 路径；先到的是高优先级来源，后到的直接跳过
         Map<String, Boolean> seenJsonPaths = new LinkedHashMap<>();
@@ -117,18 +135,11 @@ public class ScanServiceImpl implements ScanService {
                 long archiveStart = System.currentTimeMillis();
                 List<String> jsonFiles;
                 try {
-                    jsonFiles = jarRepo.listJsonFiles(archive, targetPaths);
+                    // 按路径规则列出（任何命名空间），不再依赖调用方传进来的前缀
+                    jsonFiles = jarRepo.listEntries(archive, ScanServiceImpl::isPokemonDataPath);
                 } catch (Exception e) {
                     log.warn("Failed to read archive: {} - {}", archive.getName(), e.getMessage());
                     continue;
-                }
-                if (!isModsRoot) {
-                    // 数据包里只有 species 与 species_additions 是我们的目标；
-                    // 其余（图鉴条目、骑乘参数、进度、配方……）不必逐个解析，
-                    // 否则候选数会从上万条涨到十几万条，白白拖慢加载。
-                    jsonFiles = jsonFiles.stream()
-                        .filter(ScanServiceImpl::isPokemonDataPath)
-                        .toList();
                 }
 
                 List<String> kept = new ArrayList<>();
@@ -157,14 +168,16 @@ public class ScanServiceImpl implements ScanService {
     }
 
     /**
-     * 数据包中与宝可梦相关的两类路径：
+     * 是否是宝可梦数据：
      * <ul>
      *   <li>{@code data/<命名空间>/species/**} —— 物种本体；</li>
-     *   <li>{@code data/<命名空间>/species_additions/**} —— 整合包用于整体覆盖物种字段的文件
+     *   <li>{@code data/<命名空间>/species_additions/**} —— 整合包/魔改模组用于整体覆盖物种字段的文件
      *       （实测 4693 个，其中 2082 个覆盖了招式表）。</li>
      * </ul>
+     *
+     * <p>命名空间不限定为 {@code cobblemon}，理由见 {@link #POKEMON_DATA_PATH}。
      */
-    private static boolean isPokemonDataPath(String path) {
-        return path.contains("/species/") || path.contains("/species_additions/");
+    static boolean isPokemonDataPath(String path) {
+        return path != null && path.endsWith(".json") && POKEMON_DATA_PATH.matcher(path).matches();
     }
 }

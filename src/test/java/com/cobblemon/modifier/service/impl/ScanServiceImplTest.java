@@ -43,7 +43,7 @@ public class ScanServiceImplTest {
         File emptyDir = tempFolder.newFolder("empty");
 
         ScanService.ScanResult result = scanService.scanAndValidate(
-            emptyDir, List.of("data/"), jn -> true, json -> true,
+            emptyDir, jn -> true, json -> true,
             (cur, total, status) -> progressLog.add(status));
 
         assertEquals(0, result.totalCount());
@@ -58,7 +58,7 @@ public class ScanServiceImplTest {
         new File(dir, "readme.txt").createNewFile(); // non-jar file
 
         ScanService.ScanResult result = scanService.scanAndValidate(
-            dir, List.of("data/"), jn -> true, json -> true, (c, t, s) -> {});
+            dir, jn -> true, json -> true, (c, t, s) -> {});
 
         assertEquals(0, result.totalCount());
     }
@@ -71,7 +71,7 @@ public class ScanServiceImplTest {
         File fakeJar = new File(dir, "cobblemon.jar");
         assertTrue(fakeJar.createNewFile());
 
-        when(jarRepo.listJsonFiles(any(File.class), anyList()))
+        when(jarRepo.listEntries(any(File.class), any()))
             .thenReturn(List.of("data/cobblemon/species/pikachu.json"));
 
         JsonObject validJson = new JsonObject();
@@ -80,7 +80,7 @@ public class ScanServiceImplTest {
             .thenReturn(Map.of("data/cobblemon/species/pikachu.json", validJson));
 
         ScanService.ScanResult result = scanService.scanAndValidate(
-            dir, List.of("data/cobblemon/species"), jn -> true, json -> true,
+            dir, jn -> true, json -> true,
             (cur, total, status) -> progressLog.add(status));
 
         assertEquals(1, result.totalCount());
@@ -97,18 +97,18 @@ public class ScanServiceImplTest {
         new File(dir, "keep.jar").createNewFile();
         new File(dir, "ignore.jar").createNewFile();
 
-        // Only listJsonFiles returns results for keep.jar
-        when(jarRepo.listJsonFiles(any(File.class), anyList()))
-            .thenReturn(List.of("data/species/test.json"));
+        // 只有 keep.jar 会返回候选（jar 过滤器在扫描前就把 ignore.jar 挡掉）
+        when(jarRepo.listEntries(any(File.class), any()))
+            .thenReturn(List.of("data/cobblemon/species/test.json"));
 
         JsonObject validJson = new JsonObject();
         validJson.addProperty("name", "test");
         when(jarRepo.readJsonBatch(any(File.class), anyList()))
-            .thenReturn(Map.of("data/species/test.json", validJson));
+            .thenReturn(Map.of("data/cobblemon/species/test.json", validJson));
 
         // Filter: only "keep.jar"
         ScanService.ScanResult result = scanService.scanAndValidate(
-            dir, List.of("data/"), jn -> jn.equals("keep.jar"), json -> true,
+            dir, jn -> jn.equals("keep.jar"), json -> true,
             (c, t, s) -> {});
 
         assertEquals(1, result.totalCount());
@@ -121,15 +121,15 @@ public class ScanServiceImplTest {
         File dir = tempFolder.newFolder("reject");
         new File(dir, "mod.jar").createNewFile();
 
-        when(jarRepo.listJsonFiles(any(File.class), anyList()))
-            .thenReturn(List.of("data/species/bad.json"));
+        when(jarRepo.listEntries(any(File.class), any()))
+            .thenReturn(List.of("data/cobblemon/species/bad.json"));
 
         JsonObject invalidJson = new JsonObject();
         when(jarRepo.readJsonBatch(any(File.class), anyList()))
-            .thenReturn(Map.of("data/species/bad.json", invalidJson));
+            .thenReturn(Map.of("data/cobblemon/species/bad.json", invalidJson));
 
         ScanService.ScanResult result = scanService.scanAndValidate(
-            dir, List.of("data/"), jn -> true,
+            dir, jn -> true,
             json -> json.has("baseStats"), // validator: must have baseStats
             (c, t, s) -> {});
 
@@ -145,16 +145,18 @@ public class ScanServiceImplTest {
         File dir = tempFolder.newFolder("progress");
         new File(dir, "mod.jar").createNewFile();
 
-        when(jarRepo.listJsonFiles(any(File.class), anyList()))
-            .thenReturn(List.of("data/a.json", "data/b.json", "data/c.json"));
+        when(jarRepo.listEntries(any(File.class), any()))
+            .thenReturn(List.of("data/cobblemon/species/a.json",
+                "data/cobblemon/species/b.json", "data/cobblemon/species/c.json"));
 
         JsonObject json = new JsonObject();
         json.addProperty("name", "x");
         when(jarRepo.readJsonBatch(any(File.class), anyList()))
-            .thenReturn(Map.of("data/a.json", json, "data/b.json", json, "data/c.json", json));
+            .thenReturn(Map.of("data/cobblemon/species/a.json", json,
+                "data/cobblemon/species/b.json", json, "data/cobblemon/species/c.json", json));
 
         scanService.scanAndValidate(
-            dir, List.of("data/"), jn -> true, j -> true,
+            dir, jn -> true, j -> true,
             (cur, total, status) -> progressLog.add(cur + "/" + total));
 
         // 收集候选阶段会先发 0/0 的"进度提示"，逐个校验的进度是 N/3
@@ -172,13 +174,13 @@ public class ScanServiceImplTest {
         File dir = tempFolder.newFolder("error");
         new File(dir, "bad.jar").createNewFile();
 
-        when(jarRepo.listJsonFiles(any(File.class), anyList()))
-            .thenReturn(List.of("data/bad.json"));
+        when(jarRepo.listEntries(any(File.class), any()))
+            .thenReturn(List.of("data/cobblemon/species/bad.json"));
         when(jarRepo.readJsonBatch(any(File.class), anyList()))
             .thenThrow(new RuntimeException("JAR corrupted"));
 
         ScanService.ScanResult result = scanService.scanAndValidate(
-            dir, List.of("data/"), jn -> true, json -> true, (c, t, s) -> {});
+            dir, jn -> true, json -> true, (c, t, s) -> {});
 
         assertEquals(1, result.totalCount());
         assertEquals(0, result.validPaths().size());

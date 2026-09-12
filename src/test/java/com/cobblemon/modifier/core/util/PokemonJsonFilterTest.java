@@ -74,6 +74,67 @@ public class PokemonJsonFilterTest {
         assertFalse(PokemonJsonFilter.isEditableAddition(null));
     }
 
+    // ---- 只带 forms 的覆盖文件（魔改 Mega 石）----
+
+    @Test
+    public void isEditableAddition_shouldAcceptFormWithBaseStats() {
+        // mushiromega 的莱希拉姆：顶层只有 target + forms，种族值写在形态里
+        JsonObject json = new JsonObject();
+        json.addProperty("target", "cobblemon:reshiram");
+        JsonObject form = new JsonObject();
+        form.addProperty("name", "Mega");
+        form.add("baseStats", new JsonObject());
+        JsonArray forms = new JsonArray();
+        forms.add(form);
+        json.add("forms", forms);
+
+        assertTrue(PokemonJsonFilter.isEditableAddition(json));
+    }
+
+    @Test
+    public void isEditableAddition_shouldAcceptFormWithTypesOrAbilities() {
+        assertTrue(PokemonJsonFilter.isEditableAddition(additionWithForm("primaryType")));
+        assertTrue(PokemonJsonFilter.isEditableAddition(additionWithForm("abilities")));
+    }
+
+    @Test
+    public void isEditableAddition_shouldRejectFormWithoutEditableFields() {
+        // 形态只改骑乘参数之类的，仍然不是我们能编辑的
+        JsonObject json = new JsonObject();
+        json.addProperty("target", "cobblemon:garchomp");
+        JsonObject form = new JsonObject();
+        form.addProperty("name", "Mega");
+        form.add("riding", new JsonObject());
+        JsonArray forms = new JsonArray();
+        forms.add(form);
+        json.add("forms", forms);
+
+        assertFalse(PokemonJsonFilter.isEditableAddition(json));
+    }
+
+    @Test
+    public void isEditableAddition_shouldIgnoreNonObjectForms() {
+        JsonObject json = new JsonObject();
+        json.addProperty("target", "cobblemon:garchomp");
+        JsonArray forms = new JsonArray();
+        forms.add("not-an-object");
+        json.add("forms", forms);
+
+        assertFalse(PokemonJsonFilter.isEditableAddition(json));
+    }
+
+    private static JsonObject additionWithForm(String formField) {
+        JsonObject json = new JsonObject();
+        json.addProperty("target", "cobblemon:charizard");
+        JsonObject form = new JsonObject();
+        form.addProperty("name", "Mega-Z");
+        form.add(formField, new JsonObject());
+        JsonArray forms = new JsonArray();
+        forms.add(form);
+        json.add("forms", forms);
+        return json;
+    }
+
     private static JsonObject addition(String firstField) {
         JsonObject json = new JsonObject();
         json.addProperty("target", "cobblemon:garchomp");

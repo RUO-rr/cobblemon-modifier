@@ -142,6 +142,45 @@ public class TypeModifierTest {
         assertTrue(modifier.hasValidStatsFields(json(CHARIZARD)));
     }
 
+    /**
+     * 魔改 Mega 石的覆盖文件：顶层只有 target + forms，属性写在形态里
+     * （mushiromega 的喷火龙 Mega-Z 就是这样）。
+     */
+    @Test
+    public void overlayWithFormTypesIsEditable() {
+        JsonObject overlay = json("""
+            {
+              "target": "cobblemon:charizard",
+              "forms": [
+                { "name": "Mega-Z", "primaryType": "ground", "secondaryType": "flying" }
+              ]
+            }
+            """);
+        TypeModifier modifier = new TypeModifier();
+
+        assertTrue("这类文件必须能通过校验，否则列表里看不到它",
+            modifier.hasValidStatsFields(overlay));
+
+        Map<String, Object> values = modifier.parseJson(overlay);
+        String primaryKey = modifier.getFieldNames().stream()
+            .filter(key -> key.startsWith("type_primary"))
+            .findFirst()
+            .orElseThrow();
+        String secondaryKey = modifier.getFieldNames().stream()
+            .filter(key -> key.startsWith("type_secondary"))
+            .findFirst()
+            .orElseThrow();
+        assertEquals("Ground", values.get(primaryKey));
+        assertEquals("Flying", values.get(secondaryKey));
+        assertEquals("Mega-Z - 主属性", modifier.getFieldLabel(primaryKey));
+
+        values.put(primaryKey, "Dragon");
+        JsonObject modified = modifier.modifyJson(overlay, values);
+        JsonObject form = modified.getAsJsonArray("forms").get(0).getAsJsonObject();
+        assertEquals("dragon", form.get("primaryType").getAsString());
+        assertEquals("flying", form.get("secondaryType").getAsString());
+    }
+
     // ================================================================
     // 写入
     // ================================================================

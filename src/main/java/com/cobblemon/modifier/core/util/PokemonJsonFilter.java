@@ -30,6 +30,17 @@ public final class PokemonJsonFilter {
     private static final Set<String> EDITABLE_ADDITION_FIELDS =
         Set.of("moves", "abilities", "baseStats");
 
+    /**
+     * 形态自身带的、我们能编辑的字段。
+     *
+     * <p>魔改 Mega 石（mushiromega 的 Mega-Z / Mega-M、ZA 的超进化）就是这种：
+     * 文件顶层只有 {@code target} + {@code forms}，种族值/属性/特性全写在形态里，
+     * 例如 {@code data/newsmega/species_additions/generation1/charizard.json}。
+     * 不认这种结构，"喷火龙进化石Z"这类宝可梦就永远改不了。
+     */
+    private static final Set<String> EDITABLE_FORM_FIELDS =
+        Set.of("baseStats", "primaryType", "abilities");
+
     private PokemonJsonFilter() {
     }
 
@@ -46,6 +57,25 @@ public final class PokemonJsonFilter {
         for (String field : EDITABLE_ADDITION_FIELDS) {
             if (json.has(field)) {
                 return true;
+            }
+        }
+        return hasEditableForm(json);
+    }
+
+    /** 覆盖文件的形态里是否带着我们能改的字段。 */
+    private static boolean hasEditableForm(JsonObject json) {
+        if (!json.has("forms") || !json.get("forms").isJsonArray()) {
+            return false;
+        }
+        for (var element : json.getAsJsonArray("forms")) {
+            if (!element.isJsonObject()) {
+                continue;
+            }
+            JsonObject form = element.getAsJsonObject();
+            for (String field : EDITABLE_FORM_FIELDS) {
+                if (form.has(field)) {
+                    return true;
+                }
             }
         }
         return false;
