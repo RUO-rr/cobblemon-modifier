@@ -14,6 +14,7 @@ import com.cobblemon.modifier.repository.impl.OverrideRepositoryImpl;
 import com.cobblemon.modifier.service.ModifyService;
 import com.cobblemon.modifier.service.MegaLimitService;
 import com.cobblemon.modifier.service.MoveCatalog;
+import com.cobblemon.modifier.service.MoveDataService;
 import com.cobblemon.modifier.service.ScanService;
 import com.cobblemon.modifier.service.SpawnConfigService;
 import com.cobblemon.modifier.service.SpawnRateService;
@@ -21,6 +22,7 @@ import com.cobblemon.modifier.service.SpeciesOverrideIndex;
 import com.cobblemon.modifier.service.impl.ModifyServiceImpl;
 import com.cobblemon.modifier.service.impl.MegaLimitServiceImpl;
 import com.cobblemon.modifier.service.impl.MoveCatalogImpl;
+import com.cobblemon.modifier.service.impl.MoveDataServiceImpl;
 import com.cobblemon.modifier.service.impl.ScanServiceImpl;
 import com.cobblemon.modifier.service.impl.SpawnConfigServiceImpl;
 import com.cobblemon.modifier.service.impl.SpawnRateServiceImpl;
@@ -52,6 +54,7 @@ public class ModifierContainer {
     private final SpawnConfigService spawnConfigService;
     private final MegaLimitService megaLimitService;
     private final MoveCatalog moveCatalog;
+    private final MoveDataService moveDataService;
     private final SpeciesOverrideIndex speciesOverrideIndex;
     private final ExecutorService executor;
     private final Map<String, JsonModifier> plugins;
@@ -75,6 +78,9 @@ public class ModifierContainer {
         this.spawnConfigService = new SpawnConfigServiceImpl();
         this.megaLimitService = new MegaLimitServiceImpl();
         this.moveCatalog = new MoveCatalogImpl(jarRepo);
+        this.moveDataService = new MoveDataServiceImpl(
+            jarRepo, overrideRepo,
+            net.fabricmc.loader.api.FabricLoader.getInstance().getGameDir());
 
         // 3. 线程池
         this.executor = Executors.newFixedThreadPool(2);
@@ -180,6 +186,10 @@ public class ModifierContainer {
         return spawnConfigService;
     }
 
+    public MoveDataService getMoveDataService() {
+        return moveDataService;
+    }
+
     public ExecutorService getExecutor() {
         return executor;
     }
@@ -207,7 +217,8 @@ public class ModifierContainer {
         this.controller = new MainController(
             view, view.getPluginPanel(), scanService, modifyService,
             jarRepo, configRepo, overrideRepo, spawnRateService, spawnConfigService,
-            megaLimitService, executor, getEditorPlugins(), () -> datapackSync.run());
+            megaLimitService, moveDataService, executor, getEditorPlugins(),
+            () -> datapackSync.run());
 
         // 6. 连接 View -> Controller（绑定事件 + 初始化）
         view.setController(controller);

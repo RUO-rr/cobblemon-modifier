@@ -72,6 +72,33 @@ public class OverrideRepositoryImpl implements OverrideRepository {
     }
 
     @Override
+    public String readOverrideText(String path) {
+        Path file = resolve(path);
+        if (file == null || !Files.isRegularFile(file)) {
+            return null;
+        }
+        try {
+            return Files.readString(file, StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            log.warn("读取覆盖文件失败：{} - {}", file, e.getMessage());
+            return null;
+        }
+    }
+
+    @Override
+    public void writeOverrideText(String path, String text) throws Exception {
+        Path file = resolve(path);
+        if (file == null || text == null) {
+            throw new IllegalArgumentException("非法的覆盖路径：" + path);
+        }
+        Files.createDirectories(file.getParent());
+        Path temp = file.resolveSibling(file.getFileName() + ".tmp");
+        Files.writeString(temp, text, StandardCharsets.UTF_8);
+        Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING);
+        log.info("已写入覆盖文件：{}", stagingRoot.relativize(file));
+    }
+
+    @Override
     public boolean deleteOverride(String jsonPath) throws Exception {
         Path file = resolve(jsonPath);
         if (file == null) {

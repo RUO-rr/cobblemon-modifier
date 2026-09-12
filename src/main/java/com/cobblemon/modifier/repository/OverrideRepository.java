@@ -21,6 +21,21 @@ public interface OverrideRepository {
      * 写入指定资源路径的覆盖 JSON。
      */
     void writeOverride(String jsonPath, JsonObject data) throws Exception;
+
+    /**
+     * 读取指定资源路径的覆盖**文本**；没有覆盖时返回 null。
+     *
+     * <p>招式定义是 {@code data/cobblemon/moves/&lt;id&gt;.js} 这类脚本文件
+     * （"JSON + 内嵌函数"），既不是纯 JSON 也不能用 Gson 解析，
+     * 所以覆盖层需要一条文本通道。
+     */
+    String readOverrideText(String path);
+
+    /**
+     * 写入指定资源路径的覆盖文本（招式脚本等）。
+     */
+    void writeOverrideText(String path, String text) throws Exception;
+
     /**
      * 删除指定资源路径的覆盖文件（恢复原版）。
      *

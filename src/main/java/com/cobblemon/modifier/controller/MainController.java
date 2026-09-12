@@ -5,6 +5,8 @@ import com.cobblemon.modifier.core.JsonModifier;
 import com.cobblemon.modifier.core.util.JsonUtil;
 import com.cobblemon.modifier.core.util.PokemonJsonFilter;
 import com.cobblemon.modifier.model.JarResourcePath;
+import com.cobblemon.modifier.model.MoveData;
+import com.cobblemon.modifier.model.MoveInfo;
 import com.cobblemon.modifier.model.SpawnBucketConfig;
 import com.cobblemon.modifier.model.SpawnEntry;
 import com.cobblemon.modifier.plugin.*;
@@ -16,6 +18,7 @@ import com.cobblemon.modifier.service.ScanService;
 import com.cobblemon.modifier.service.SpawnConfigService;
 import com.cobblemon.modifier.service.SpawnRateService;
 import com.cobblemon.modifier.service.MegaLimitService;
+import com.cobblemon.modifier.service.MoveDataService;
 import com.cobblemon.modifier.ui.MainFrame;
 import com.cobblemon.modifier.ui.PluginPanel;
 
@@ -53,6 +56,7 @@ public class MainController {
     private final SpawnRateService spawnRateService;
     private final SpawnConfigService spawnConfigService;
     private final MegaLimitService megaLimitService;
+    private final MoveDataService moveDataService;
     private final JarRepository jarRepo;
     private final ConfigRepository configRepo;
     private final OverrideRepository overrideRepo;
@@ -82,6 +86,7 @@ public class MainController {
                           SpawnRateService spawnRateService,
                           SpawnConfigService spawnConfigService,
                           MegaLimitService megaLimitService,
+                          MoveDataService moveDataService,
                           ExecutorService executor,
                           Map<String, JsonModifier> plugins,
                           Runnable datapackSync) {
@@ -95,6 +100,7 @@ public class MainController {
         this.spawnRateService = spawnRateService;
         this.spawnConfigService = spawnConfigService;
         this.megaLimitService = megaLimitService;
+        this.moveDataService = moveDataService;
         this.executor = executor;
         this.plugins = plugins;
         this.datapackSync = datapackSync != null ? datapackSync : () -> { };
@@ -531,6 +537,57 @@ public class MainController {
     /** mega_showdown 配置文件路径，便于界面提示。 */
     public Path getMegaLimitConfigPath() {
         return megaLimitService.getConfigPath();
+    }
+
+    // ================================================================
+    // 招式数据（威力 / 命中 / PP / 优先级 / 属性）
+    // ================================================================
+
+    /** 当前选定的模组目录（通常是 {@code <gameDir>/mods}）。 */
+    public File getSelectedFolder() {
+        return selectedFolder;
+    }
+
+    /**
+     * 搜索招式（基础招式 + 数据包自定义招式）。
+     *
+     * @param query 招式 id 或英文名的一部分，留空表示全部
+     */
+    public List<MoveInfo> searchMoves(String query, int limit) {
+        return moveDataService.search(selectedFolder, query, limit);
+    }
+
+    /** 招式总数。 */
+    public int getMoveTotalCount() {
+        return moveDataService.totalCount(selectedFolder);
+    }
+
+    /** 读取招式当前数值（有覆盖时以覆盖为准）。 */
+    public MoveData loadMove(MoveInfo info) throws Exception {
+        return moveDataService.load(info);
+    }
+
+    /**
+     * 保存招式数值并同步到当前世界的数据包。
+     *
+     * @return 变更说明，例如 {@code "威力 40 → 80"}
+     */
+    public String saveMove(MoveInfo info, java.util.Map<String, String> values) throws Exception {
+        String detail = moveDataService.save(info, values);
+        datapackSync.run();
+        return detail;
+    }
+
+    /** 删除该招式的覆盖（恢复原版），并同步数据包。 */
+    public boolean restoreMove(MoveInfo info) throws Exception {
+        boolean deleted = moveDataService.restore(info);
+        datapackSync.run();
+        return deleted;
+    }
+
+    /** 招式覆盖文件的暂存目录，便于界面提示。 */
+    public Path getMoveOverrideRoot() {
+        return overrideRepo.getStagingRoot().resolve("data").resolve("cobblemon").resolve("moves");
     }
 
     // ================================================================

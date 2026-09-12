@@ -59,6 +59,8 @@ public class ModifierScreen extends Screen {
     private int leftW;
     private int rightX;
     private int rightW;
+    /** 顶部"修改插件"下拉框宽度（与右侧按钮行统一计算，避免重叠）。 */
+    private int pluginButtonWidth = 120;
     private int rowsPerPage = 8;
 
     // ---- 左侧控件 ----
@@ -72,6 +74,7 @@ public class ModifierScreen extends Screen {
     // ---- 右侧控件 ----
     private CyclingButtonWidget<String> pluginButton;
     private ButtonWidget fieldSearchButton;
+    private ButtonWidget moveDataButton;
     private ButtonWidget bucketConfigButton;
     private ButtonWidget closeButton;
     private ButtonWidget prevPageButton;
@@ -161,21 +164,36 @@ public class ModifierScreen extends Screen {
         pokemonList.setPaths(view.getCurrentDisplayPaths());
         lastDisplayedPaths = view.getCurrentDisplayPaths();
 
+        // 顶部一行放下"修改插件"下拉框 + 字段查找 / 招式数据 / 稀有等级权重 / 关闭。
+        // 宽度按比例分配并逐个累加，保证窄窗口下也不会互相压住。
+        int topAvail = Math.max(150, rightW - 8);
+        int searchW = Math.max(44, Math.round(topAvail * 0.16f));
+        int moveW = Math.max(48, Math.round(topAvail * 0.17f));
+        int bucketW = Math.max(48, Math.round(topAvail * 0.17f));
+        int closeW = Math.max(36, Math.round(topAvail * 0.12f));
+        pluginButtonWidth = Math.max(64, topAvail - searchW - moveW - bucketW - closeW);
+
         buildPluginButton(existingPluginName());
 
-        int searchW = Math.min(88, Math.max(56, rightW / 5));
-        int bucketW = Math.min(104, Math.max(70, rightW / 5));
-        int closeW = Math.min(60, Math.max(40, rightW / 7));
-        int pluginW = Math.max(80, rightW - searchW - bucketW - closeW - 6);
-
+        int buttonX = rightX + pluginButtonWidth + 2;
         fieldSearchButton = ButtonWidget.builder(Text.literal("字段查找"), b -> onFieldSearch())
-            .dimensions(rightX + pluginW + 2, 18, searchW, H).build();
+            .dimensions(buttonX, 18, searchW, H).build();
+        buttonX += searchW + 2;
+        moveDataButton = ButtonWidget.builder(Text.literal("招式数据"), b -> onMoveData())
+            .tooltip(Tooltip.of(Text.literal(
+                "改招式本身的威力 / 命中 / PP / 优先级 / 属性\n"
+                    + "基础招式（showdown）与数据包自定义招式都能改\n"
+                    + "写入覆盖脚本并同步数据包，重进世界后生效")))
+            .dimensions(buttonX, 18, moveW, H).build();
+        buttonX += moveW + 2;
         bucketConfigButton = ButtonWidget.builder(Text.literal("稀有等级权重"), b -> onBucketConfig())
             .tooltip(Tooltip.of(Text.literal("编辑全局稀有等级占比（best-spawner-config.json）\n保存后立即热重载")))
-            .dimensions(rightX + pluginW + searchW + 4, 18, bucketW, H).build();
+            .dimensions(buttonX, 18, bucketW, H).build();
+        buttonX += bucketW + 2;
         closeButton = ButtonWidget.builder(Text.literal("关闭"), b -> close())
-            .dimensions(rightX + pluginW + searchW + bucketW + 6, 18, closeW, H).build();
+            .dimensions(buttonX, 18, Math.max(36, rightX + rightW - buttonX), H).build();
         addDrawableChild(fieldSearchButton);
+        addDrawableChild(moveDataButton);
         addDrawableChild(bucketConfigButton);
         addDrawableChild(closeButton);
 
@@ -296,14 +314,10 @@ public class ModifierScreen extends Screen {
             view.selectPluginByName(initial);
         }
 
-        int searchW = Math.min(110, Math.max(60, rightW / 4));
-        int closeW = Math.min(70, Math.max(40, rightW / 6));
-        int pluginW = Math.max(80, rightW - searchW - closeW - 4);
-
         pluginButton = CyclingButtonWidget.<String>builder(Text::literal)
             .values(values)
             .initially(initial)
-            .build(rightX, 18, pluginW, H, Text.literal("修改插件"), (btn, value) -> onPluginPicked(value));
+            .build(rightX, 18, pluginButtonWidth, H, Text.literal("修改插件"), (btn, value) -> onPluginPicked(value));
         pluginButton.setMessage(Text.literal("修改插件: " + initial));
         addDrawableChild(pluginButton);
     }
@@ -353,6 +367,15 @@ public class ModifierScreen extends Screen {
 
     private void onBucketConfig() {
         MinecraftClient.getInstance().setScreen(new BucketConfigScreen(controller, this));
+    }
+
+    /** 打开"招式数据修改"界面（改招式本身的威力 / 命中等）。 */
+    private void onMoveData() {
+        if (!folderReady()) {
+            view.showError("请先点击“应用目录”选择有效目录");
+            return;
+        }
+        MinecraftClient.getInstance().setScreen(new MoveDataScreen(controller, this));
     }
 
     /**

@@ -107,6 +107,42 @@ public class JarRepositoryImpl implements JarRepository {
     }
 
     @Override
+    public String readText(File jarFile, String entryPath) throws Exception {
+        try (JarFile jar = new JarFile(jarFile)) {
+            JarEntry entry = jar.getJarEntry(entryPath);
+            if (entry == null) {
+                throw new FileNotFoundException("Entry not found in JAR: " + entryPath);
+            }
+            try (InputStream in = jar.getInputStream(entry)) {
+                return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            }
+        }
+    }
+
+    @Override
+    public Map<String, String> readTextBatch(File jarFile, List<String> entryPaths) throws Exception {
+        Map<String, String> result = new LinkedHashMap<>();
+        if (entryPaths == null || entryPaths.isEmpty()) {
+            return result;
+        }
+        // 与 readJsonBatch 同理：整个压缩包只打开一次
+        try (JarFile jar = new JarFile(jarFile)) {
+            for (String entryPath : entryPaths) {
+                JarEntry entry = jar.getJarEntry(entryPath);
+                if (entry == null) {
+                    continue;
+                }
+                try (InputStream in = jar.getInputStream(entry)) {
+                    result.put(entryPath, new String(in.readAllBytes(), StandardCharsets.UTF_8));
+                } catch (Exception e) {
+                    log.warn("Failed to read {} in {}: {}", entryPath, jarFile.getName(), e.getMessage());
+                }
+            }
+        }
+        return result;
+    }
+
+    @Override
     public void writeJson(File jarFile, String jsonPath, JsonObject data) throws Exception {
         Path tempJar = Files.createTempFile("cobblemon_temp", ".jar");
         try {

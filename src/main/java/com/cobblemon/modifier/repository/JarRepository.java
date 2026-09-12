@@ -44,6 +44,22 @@ public interface JarRepository {
     Map<String, JsonObject> readJsonBatch(File jarFile, List<String> jsonPaths) throws Exception;
 
     /**
+     * 读取压缩包里的**文本**条目（招式脚本是 {@code .js}，不是 JSON）。
+     *
+     * @param entryPath 包内路径，例如 {@code data/cobblemon/moves/tackle.js}
+     */
+    String readText(File jarFile, String entryPath) throws Exception;
+
+    /**
+     * 批量读取同一个压缩包里的多个文本条目，**只打开一次压缩包**。
+     *
+     * <p>整合包里自定义招式脚本有几百个，逐条读会反复打开同一个 JAR。
+     *
+     * @return 路径 → 文本；读不到的条目不会出现在结果里
+     */
+    Map<String, String> readTextBatch(File jarFile, List<String> entryPaths) throws Exception;
+
+    /**
      * 将修改后的 JSON 写回 JAR。
      */
     void writeJson(File jarFile, String jsonPath, JsonObject data) throws Exception;
